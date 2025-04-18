@@ -10,6 +10,7 @@ import sys
 sys.path.append('.')
 from user_info import User_info
 from csv_gen import csv_gen
+from md_gen import md_gen
 from cache_gen import cache_gen
 from url_utils import quote_url
 
@@ -49,9 +50,11 @@ has_video = False
 csv_file = None
 cache_data = None
 down_log = False
-async_down = True
 autoSync = False
 
+md_file = None
+md_output = True
+media_count_limit = 0
 
 start_time_stamp = 655028357000   #1990-10-04
 end_time_stamp = 2548484357000    #2050-10-04
@@ -86,8 +89,10 @@ with open('settings.json', 'r', encoding='utf8') as f:
         has_video = True
     if settings['log_output']:
         log_output = True
-    if not settings['async_down']:
-        async_down = False
+    if settings['max_concurrent_requests']:
+        max_concurrent_requests = settings['max_concurrent_requests']
+    else:
+        max_concurrent_requests = 8
 ###### proxy ######
     if settings['proxy']:
         proxies = settings['proxy']
@@ -101,6 +106,12 @@ with open('settings.json', 'r', encoding='utf8') as f:
     else:
         orig_format = False
         img_format = settings['image_format']
+
+    if not settings['md_output']:
+        md_output = False
+
+    if settings['media_count_limit']:
+        media_count_limit = settings['media_count_limit']
 
     f.close()
 
@@ -126,8 +137,9 @@ def get_other_info(_user_info):
         _user_info.name = raw_data['data']['user']['result']['legacy']['name']
         _user_info.statuses_count = raw_data['data']['user']['result']['legacy']['statuses_count']
         _user_info.media_count = raw_data['data']['user']['result']['legacy']['media_count']
-    except Exception:
+    except Exception as e:
         print('获取信息失败')
+        print(e)
         print(response)
         return False
     return True
@@ -136,7 +148,7 @@ def print_info(_user_info):
     print(
         f'''
         <======基本信息=====>
-        昵称:{_user_info.name}
+        昵称:{_user_info.name.encode('utf-8', errors='replace').decode('utf-8')}
         用户名:{_user_info.screen_name}
         数字ID:{_user_info.rest_id}
         总推数(含转推):{_user_info.statuses_count}
@@ -190,12 +202,25 @@ def get_download_url(_user_info):
 
                     _result = time_comparison(tweet_msecs, start_time_stamp, end_time_stamp)
                     if _result[0]:  #符合时间限制
-                        if 'extended_entities' in a and 'retweeted_status_result' not in a:
-                            _photo_lst += [(get_heighest_video_quality(_media['video_info']['variants']), f'{timestr}-vid', [tweet_msecs, _user_info.name, f'@{_user_info.screen_name}', _media['expanded_url'], 'Video', get_heighest_video_quality(_media['video_info']['variants']), '', a['full_text']] + frr) if 'video_info' in _media and has_video else (_media['media_url_https'], f'{timestr}-img', [tweet_msecs, _user_info.name, f'@{_user_info.screen_name}', _media['expanded_url'], 'Image', _media['media_url_https'], '', a['full_text']] + frr) for _media in a['extended_entities']['media']]
+                        if 'retweeted_status_result' not in a : #判断是否为转推,以及是否获取转推
+                            name = _user_info.name
+                            screen_name = _user_info.screen_name
+                            if has_likes:
+                                a2 = i[x_label]['itemContent']['tweet_results']['result']['core']['user_results']['result']['legacy']
+                                name = a2['name']
+                                screen_name = a2['screen_name']
+                            if 'extended_entities' in a:
+                                _photo_lst += [(get_heighest_video_quality(_media['video_info']['variants']), f'{timestr}-vid', [tweet_msecs, name, f'@{screen_name}', _media['expanded_url'], 'Video', get_heighest_video_quality(_media['video_info']['variants']), '', a['full_text']] + frr) if 'video_info' in _media and has_video else (_media['media_url_https'], f'{timestr}-img', [tweet_msecs, name, f'@{screen_name}', _media['expanded_url'], 'Image', _media['media_url_https'], '', a['full_text']] + frr) for _media in a['extended_entities']['media']]
 
-                        
-                        elif 'retweeted_status_result' in a and 'extended_entities' in a['retweeted_status_result']['result']['legacy']:    #判断是否为转推,以及是否获取转推
-                            _photo_lst += [(get_heighest_video_quality(_media['video_info']['variants']), f'{timestr}-vid-retweet', [tweet_msecs, a['retweeted_status_result']['result']['core']['user_results']['result']['legacy']['name'], f"@{a['retweeted_status_result']['result']['core']['user_results']['result']['legacy']['screen_name']}", _media['expanded_url'], 'Video', get_heighest_video_quality(_media['video_info']['variants']), '', a['retweeted_status_result']['result']['legacy']['full_text']] + frr) if 'video_info' in _media and has_video else (_media['media_url_https'], f'{timestr}-img-retweet', [tweet_msecs, a['retweeted_status_result']['result']['core']['user_results']['result']['legacy']['name'], f"@{a['retweeted_status_result']['result']['core']['user_results']['result']['legacy']['screen_name']}", _media['expanded_url'], 'Image', _media['media_url_https'], '', a['retweeted_status_result']['result']['legacy']['full_text']] + frr) for _media in a['retweeted_status_result']['result']['legacy']['extended_entities']['media']]
+                        elif has_retweet:
+                            name = a['retweeted_status_result']['result']['core']['user_results']['result']['legacy']['name']
+                            screen_name = a['retweeted_status_result']['result']['core']['user_results']['result']['legacy']['screen_name']
+                            full_text = a['retweeted_status_result']['result']['legacy']['full_text']
+                            id_str = a['retweeted_status_result']['result']['legacy']['id_str']
+                            
+                            if 'extended_entities' in a['retweeted_status_result']['result']['legacy']:
+                                _photo_lst += [(get_heighest_video_quality(_media['video_info']['variants']), f'{timestr}-vid-retweet', [tweet_msecs, name, f"@{screen_name}", _media['expanded_url'], 'Video', get_heighest_video_quality(_media['video_info']['variants']), '', full_text] + frr) if 'video_info' in _media and has_video else (_media['media_url_https'], f'{timestr}-img-retweet', [tweet_msecs, name, f"@{screen_name}", _media['expanded_url'], 'Image', _media['media_url_https'], '', full_text] + frr) for _media in a['retweeted_status_result']['result']['legacy']['extended_entities']['media']]
+
                     elif not _result[1]:    #已超出目标时间范围
                         start_label = False
                         break
@@ -305,15 +330,23 @@ def download_control(_user_info):
                 _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.mp4'
             else:
                 try:
-                    # _file_name = f'{_user_info.save_path + os.sep}{prefix}_{_user_info.count + order}.{img_format}'
-                    _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.{img_format}'
+                    if orig_format:
+                        url += f'?name=orig'
+                        _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.{csv_info[5][-3:]}' # 根据图片 url 获取原始格式
+                    else: # 指定格式时，先使用 name=orig，404 则切回 name=4096x4096，以保证最大尺寸
+                        # _file_name = f'{_user_info.save_path + os.sep}{prefix}_{_user_info.count + order}.{img_format}'
+                        _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.{img_format}'
                     if img_format != 'png':
-                        url += f'?format=jpg&name=orig'
+                        url += f'?format=jpg&name=4096x4096'
                     else:
                         url += f'?format=png&name=4096x4096'
                 except Exception as e:
                     print(url)
                     return False
+
+            csv_info[-5] = os.path.split(_file_name)[1]
+            if md_output: # 在下载完毕之前先输出到 Markdown，以尽可能保证高并发下载也能得到正确的推文顺序。
+                md_file.media_tweet_input(csv_info, prefix)
             count = 0
             orig_fail = 0 # 0-原图下载成功 或未开启原图下载  1-JPEG 原图下载失败，尝试 PNG 原图下载  2-原图下载失败，尝试使用name=4096x4096下载
             if os.path.exists(_file_name):
@@ -339,24 +372,19 @@ def download_control(_user_info):
 
                     if log_output:
                         print(f'{_file_name}=====>下载完成')
-            
+
                     break
                 except Exception as e:
-                    if '.mp4' in url or img_format=="png" or str(e) != "404":
+                    if '.mp4' in url or orig_format or str(e) != "404":
                         count += 1
-                        print(f'{_file_name}=====>第{count}次下载失败,正在重试(多次失败时请降低main.py第16行-异步模式)')
+                        if count >= 50:
+                            print(f'{_file_name}=====>第{count}次下载失败，已跳过该文件。')
+                            print(url)
+                            break
+                        print(f'{_file_name}=====>第{count}次下载失败,正在重试')
                         print(url)
-                    elif img_format!="png":
-                        if orig_fail == 0:
-                            orig_fail = 1
-                            if orig_format:
-                                url = url.replace('format=jpg', 'format=png')
-                                _file_name = re.sub(r'jpg$', "png", _file_name)
-                            else:
-                                url = url.replace('name=orig', 'name=4096x4096')
-                        elif orig_fail == 1: # 一般不会遇到下面这种情况
-                            orig_fail = 2
-                            url = url.replace('name=orig', 'name=4096x4096')
+                    else:
+                        url = url.replace('name=orig', 'name=4096x4096')
 
         while True:
             photo_lst = get_download_url(_user_info)
@@ -364,15 +392,11 @@ def download_control(_user_info):
                 break
             elif photo_lst[0] == True:
                 continue
-            if async_down:
-                semaphore = asyncio.Semaphore(max_concurrent_requests)    #最大并发数量，默认为8，对自己网络有自信的可以调高
-                if down_log:
-                    await asyncio.gather(*[asyncio.create_task(down_save(url[0], url[1], url[2], order)) for order,url in enumerate(photo_lst) if cache_data.is_present(url[0])])
-                else:
-                    await asyncio.gather(*[asyncio.create_task(down_save(url[0], url[1], url[2], order)) for order,url in enumerate(photo_lst)])
+            semaphore = asyncio.Semaphore(max_concurrent_requests)    #最大并发数量，默认为8，对自己网络有自信的可以调高
+            if down_log:
+                await asyncio.gather(*[asyncio.create_task(down_save(url[0], url[1], url[2], order)) for order,url in enumerate(photo_lst) if cache_data.is_present(url[0])])
             else:
-                for order,url in enumerate(photo_lst):
-                    await down_save(url[0], url[1], url[2], order)
+                await asyncio.gather(*[asyncio.create_task(down_save(url[0], url[1], url[2], order)) for order,url in enumerate(photo_lst)])
             _user_info.count += len(photo_lst)      #更新计数
 
     asyncio.run(_main())
@@ -395,6 +419,10 @@ def main(_user_info: object):
     if True:
         global csv_file
         csv_file = csv_gen(_user_info.save_path, _user_info.name, _user_info.screen_name, settings['time_range'])
+
+    if md_output:
+        global md_file
+        md_file = md_gen(_user_info.save_path, _user_info.name, _user_info.screen_name, settings['time_range'], has_likes, media_count_limit)
 
     if down_log:
         global cache_data
@@ -419,8 +447,11 @@ def main(_user_info: object):
 
     download_control(_user_info)
 
-    if not has_likes:
-        csv_file.csv_close()
+    csv_file.csv_close()
+    
+    if md_output:
+        md_file.md_close()
+
     if down_log:
         del cache_data
     print(f'{_user_info.name}下载完成\n\n')
