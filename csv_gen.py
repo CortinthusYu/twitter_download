@@ -20,6 +20,9 @@ class csv_gen():
     def csv_close(self):
         self.f.close()
 
+    def csv_flush(self):
+        self.f.flush()
+
     def stamp2time(self, msecs_stamp:int) -> str:
         timeArray = time.localtime(msecs_stamp/1000)
         otherStyleTime = time.strftime("%Y-%m-%d %H:%M", timeArray)

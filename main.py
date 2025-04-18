@@ -13,7 +13,7 @@ from csv_gen import csv_gen
 from cache_gen import cache_gen
 from url_utils import quote_url
 
-max_concurrent_requests = 8     #最大并发数量，默认为8，对自己网络有自信的可以调高; 遇到多次下载失败时适当降低
+max_concurrent_requests = 1     #最大并发数量，默认为8，对自己网络有自信的可以调高; 遇到多次下载失败时适当降低
 
 def del_special_char(string):
     string = re.sub(r'[^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a\u3040-\u31FF\.]', '', string)
@@ -299,11 +299,14 @@ def get_download_url(_user_info):
 def download_control(_user_info):
     async def _main():
         async def down_save(url, prefix, csv_info, order: int):
+            original_name = url.split('/')[-1].split('.')[0]
+            poster = csv_info[3].split('/')[3]
             if '.mp4' in url:
-                _file_name = f'{_user_info.save_path + os.sep}{prefix}_{_user_info.count + order}.mp4'
+                _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.mp4'
             else:
                 try:
-                    _file_name = f'{_user_info.save_path + os.sep}{prefix}_{_user_info.count + order}.{img_format}'
+                    # _file_name = f'{_user_info.save_path + os.sep}{prefix}_{_user_info.count + order}.{img_format}'
+                    _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.{img_format}'
                     if img_format != 'png':
                         url += f'?format=jpg&name=orig'
                     else:
@@ -313,6 +316,9 @@ def download_control(_user_info):
                     return False
             count = 0
             orig_fail = 0 # 0-原图下载成功 或未开启原图下载  1-JPEG 原图下载失败，尝试 PNG 原图下载  2-原图下载失败，尝试使用name=4096x4096下载
+            if os.path.exists(_file_name):
+                print(f'{_file_name}已经存在，跳过...')
+                return
             while True:
                 try:
                     async with semaphore:
@@ -325,9 +331,11 @@ def download_control(_user_info):
                     with open(_file_name,'wb') as f:
                         f.write(response.content)
 
-                    if not has_likes:   #非likes模式
+                    # if not has_likes:   #非likes模式
+                    if True:   #非likes模式
                         csv_info[-5] = os.path.split(_file_name)[1]
                         csv_file.data_input(csv_info)
+                        csv_file.flush()
 
                     if log_output:
                         print(f'{_file_name}=====>下载完成')
@@ -383,7 +391,8 @@ def main(_user_info: object):
     else:
         _user_info.save_path = _path
 
-    if not has_likes:
+    # if not has_likes:
+    if True:
         global csv_file
         csv_file = csv_gen(_user_info.save_path, _user_info.name, _user_info.screen_name, settings['time_range'])
 
