@@ -271,6 +271,7 @@ def get_download_url(_user_info):
         url = url_top + url_bottom      #第一页,无cursor
     try:
         global request_count
+        response = None # 避免在请求失败时在后续调用时出现unboundlocalerror
         response = httpx.get(quote_url(url), headers=_headers, proxy=proxies).text
         request_count += 1
         try:
@@ -336,12 +337,19 @@ def download_control(_user_info):
                     else: # 指定格式时，先使用 name=orig，404 则切回 name=4096x4096，以保证最大尺寸
                         # _file_name = f'{_user_info.save_path + os.sep}{prefix}_{_user_info.count + order}.{img_format}'
                         _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.{img_format}'
-                    if img_format != 'png':
-                        url += f'?format=jpg&name=4096x4096'
-                    else:
-                        url += f'?format=png&name=4096x4096'
+                        if img_format != 'png':
+                            url += f'?format=jpg&name=4096x4096'
+                        else:
+                            url += f'?format=png&name=4096x4096'
+                # try:
+                #     _file_name = f'{_user_info.save_path + os.sep}{poster}-{original_name}.{img_format}'
+                #     if img_format != 'png':
+                #         url += f'?format=jpg&name=orig'
+                #     else:
+                #         url += f'?format=png&name=4096x4096'
                 except Exception as e:
                     print(url)
+                    print(e)
                     return False
 
             csv_info[-5] = os.path.split(_file_name)[1]
@@ -368,7 +376,7 @@ def download_control(_user_info):
                     if True:   #非likes模式
                         csv_info[-5] = os.path.split(_file_name)[1]
                         csv_file.data_input(csv_info)
-                        csv_file.flush()
+                        #csv_file.flush()
 
                     if log_output:
                         print(f'{_file_name}=====>下载完成')
@@ -377,7 +385,7 @@ def download_control(_user_info):
                 except Exception as e:
                     if '.mp4' in url or orig_format or str(e) != "404":
                         count += 1
-                        if count >= 50:
+                        if count >= 3:
                             print(f'{_file_name}=====>第{count}次下载失败，已跳过该文件。')
                             print(url)
                             break

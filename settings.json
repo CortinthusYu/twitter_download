@@ -5,7 +5,7 @@
     "user_lst": "sdsddqs",
     "user_lst_info": "填入要下载的用户名(@后面的字符),支持多用户下载,用户名字间逗号(英文逗号,不要有空格)隔开",
 
-    "cookie": "auth_token=d634d91a0dd000248e0cf4c2c60a5d368c5b2cb3; ct0=700330a03dbdc4e2b9c108a356dbc67b57a4d0c4e3b6f49cdb4c5d0daaca69d6ff1c852d6bb707123e86d6694949e585496259403164a81cd3fa34889906f58eec3b8c43aa2e9e331ce4565316f0a9a3;",
+    "cookie": "guest_id=v1%3A171116363577260715; twid=u%3D966701411944734720; auth_token=d634d91a0dd000248e0cf4c2c60a5d368c5b2cb3; guest_id_ads=v1%3A171116363577260715; guest_id_marketing=v1%3A171116363577260715; ct0=700330a03dbdc4e2b9c108a356dbc67b57a4d0c4e3b6f49cdb4c5d0daaca69d6ff1c852d6bb707123e86d6694949e585496259403164a81cd3fa34889906f58eec3b8c43aa2e9e331ce4565316f0a9a3;__cf_bm=TRe1IB27wthZJC3bJnuWzXGffLVHNL_.oaHEWFDWd6Q-1744970224-1.0.1.1-MTg.KJQOLWyUfpqKa3xW4jEVqR_lp2TZ1AhsNTk..KbIfEJwpwaKRsMlr_bJlyR1LgiL.IAv0jC0yCC3VeDlt1kVJiCLEjV2TOtrLTTp42U;",
     "cookie_info": "填入 cookie (auth_token与ct0字段) //重要:替换掉其中的x即可, 注意不要删掉分号",
 
 
@@ -26,10 +26,10 @@
     "time_range": "1990-01-01:2030-01-01",
     "time_range_info": "时间范围限制,格式如 1990-01-01:2030-01-01 ,不填默认无限制",
 
-    "down_log": true,
+    "down_log": false,
     "down_log_info": "开启后将记录已下载的内容,避免重复下载浪费带宽; 注意:如需重新下载已下载内容,需要关闭此选项或删除目录下的 cache_data.log 文件",
 
-    "autoSync": true,
+    "autoSync": false,
     "autoSync_info": "开启后将基于本地已有的内容自动同步最新的部分, 本质上是自动调整时间范围的左半部分, 右半建议2030-01-01或更长",
 
     "image_format": "orig",
@@ -41,7 +41,7 @@
     "log_output": false,
     "log_output_info": "是否需要下载过程日志输出",
 
-    "max_concurrent_requests": 8,
+    "max_concurrent_requests": 1,
     "max_concurrent_requests_info": "最大并发数量, 默认为8, 对网络有自信的可以调高; 遇到多次下载失败时适当降低",
 
     "proxy": "http://localhost:7890",
