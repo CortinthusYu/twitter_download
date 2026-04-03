@@ -18,6 +18,16 @@ elif 不包含:
 ```
 
 # Change Log 
+* **2025-08-09** 
+  * 支持获取用户主页内容(头像&banner&简介)--**请直接配置profile_down.py文件并运行**
+
+* **2025-04-26** 
+  * 替换部分失效接口 
+  * `tag_down reply_down`增加`X-Client-Transaction-ID`校验, 请重新运行`pip install -r requirements.txt`安装依赖 
+  * // 目前生成的`transaction-id`仍有小概率失效, 当程序抛出`获取数据失败`时可以尝试重新运行 
+  * 目前`main text_down`似乎未受`X-Client-Transaction-ID`校验影响 
+  * Reference: `https://github.com/iSarabjitDhiman/XClientTransaction`
+
 * **2025-03-03** 
   * 支持下载评论区(指定用户或推文链接)--**请直接配置reply_down.py文件并运行**
 
@@ -73,7 +83,8 @@ elif 不包含:
 git clone https://github.com/caolvchong-top/twitter_download.git 
 cd twitter_download 
 pip3 install -r requirements.txt
-#Python版本须>=3.8
+
+#Python版本须>=3.8  httpx==0.28.1
 ``` 
 **运行** : 
 ``` 
@@ -127,7 +138,7 @@ _filter = ""
 ``` 
 推特高级搜索：https://x.com/search-advanced 
 
-实例参考：https://github.com/caolvchong-top/twitter_download/issues/63#issuecomment-2351039320
+实例参考：https://github.com/caolvchong-top/twitter_download/issues/63#issuecomment-2351039320 & https://github.com/caolvchong-top/twitter_download/issues/106
 
 
 效果预览
